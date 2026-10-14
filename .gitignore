@@ -37,3 +37,17 @@ anonymizer_code/data/corpora/ru-pii/releases/
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Raw source-corpus split files are ignored wherever they are copied.
+**/dataset_all.json
+**/dataset_all.jsonl
+**/manifest.json
+**/annotated_master.jsonl
+**/train.json
+**/train.jsonl
+**/validation.json
+**/validation.jsonl
+**/val.json
+**/val.jsonl
+**/test.json
+**/test.jsonl
