@@ -1,0 +1,5 @@
+fastapi==0.121.1
+uvicorn[standard]==0.32.1
+psycopg[binary,pool]==3.2.12
+scikit-learn==1.8.0
+numpy==2.2.5

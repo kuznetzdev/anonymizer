@@ -1,0 +1,39 @@
+# Python-generated files and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local Python environments
+.venv/
+venv/
+env/
+
+# Frontend dependencies and build output
+node_modules/
+dist/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Uploaded or installed corpus payloads are local runtime data
+anonymizer_code/data/corpora/ru-pii/incoming/
+anonymizer_code/data/corpora/ru-pii/releases/
+
+# Private source corpora and internal project material must never be published
+/references/
+/vault/
+/anonymizer_code/README.md
+/anonymizer_code/PRODUCT.md
+/anonymizer_code/scripts/package_expanded_corpus.py
+/anonymizer_code/data/qa/
+/anonymizer_code/data/corpora/ru-pii/v1/README.md
+
+# OS noise
+.DS_Store
+Thumbs.db

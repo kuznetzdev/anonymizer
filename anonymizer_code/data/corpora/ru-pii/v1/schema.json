@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://anonymizer.local/schemas/ru-pii-corpus-1.0.0.json",
+  "title": "ru-pii corpus v1 records and manifest",
+  "$defs": {
+    "manifest": {
+      "type": "object",
+      "required": ["corpus_id", "corpus_version", "schema_version", "record_counts"],
+      "properties": {
+        "corpus_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+        "corpus_version": {"type": "string", "pattern": "^[0-9]{1,9}\\.[0-9]{1,9}\\.[0-9]{1,9}$"},
+        "schema_version": {"const": "1.0.0"},
+        "record_counts": {
+          "type": "object",
+          "required": ["train", "validation", "test"],
+          "properties": {
+            "train": {"type": "integer", "minimum": 0},
+            "validation": {"type": "integer", "minimum": 0},
+            "test": {"type": "integer", "minimum": 0}
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "required": ["text", "entities"],
+      "properties": {
+        "text": {"type": "string", "minLength": 1, "maxLength": 20000},
+        "entities": {"type": "array", "items": {"$ref": "#/$defs/entity"}}
+      },
+      "additionalProperties": false
+    },
+    "entity": {
+      "type": "object",
+      "required": ["start", "end", "label"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 1},
+        "label": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$"},
+        "surface": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,8 @@
+**
+!anonymizer_code/
+!anonymizer_code/Dockerfile.web
+!anonymizer_code/nginx.conf
+!anonymizer_code/frontend/
+!anonymizer_code/frontend/**
+anonymizer_code/frontend/node_modules
+anonymizer_code/frontend/dist

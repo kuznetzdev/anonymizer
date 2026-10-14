@@ -1,0 +1,9 @@
+**
+!anonymizer_code/
+!anonymizer_code/backend/
+!anonymizer_code/backend/**
+!anonymizer_code/data/
+!anonymizer_code/data/corpora/
+!anonymizer_code/data/corpora/ru-pii/
+!anonymizer_code/data/corpora/ru-pii/v1/
+!anonymizer_code/data/corpora/ru-pii/v1/ontology.json

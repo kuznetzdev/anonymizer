@@ -1,0 +1,18 @@
+.env
+frontend/node_modules/
+frontend/dist/
+__pycache__/
+*.py[cod]
+*.log
+
+# Corpus payloads and generated releases are local data, not source artifacts.
+/data/*
+!/data/corpora/
+/data/corpora/*
+!/data/corpora/ru-pii/
+/data/corpora/ru-pii/*
+!/data/corpora/ru-pii/v1/
+/data/corpora/ru-pii/v1/*
+!/data/corpora/ru-pii/v1/README.md
+!/data/corpora/ru-pii/v1/schema.json
+!/data/corpora/ru-pii/v1/ontology.json

@@ -1,0 +1,10 @@
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY anonymizer_code/backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY anonymizer_code/backend/app /app/app
+COPY anonymizer_code/data/corpora/ru-pii/v1/ontology.json /app/data/corpora/ru-pii/v1/ontology.json
+RUN mkdir -p /app/data/corpora/ru-pii/releases && useradd --create-home --uid 10001 appuser && chown -R appuser:appuser /app/data
+USER appuser
+CMD ["python", "-m", "app.worker"]

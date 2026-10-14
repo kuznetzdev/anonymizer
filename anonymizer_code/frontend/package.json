@@ -1,0 +1,9 @@
+{
+  "name": "anonymizer-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": { "dev": "vite --host 0.0.0.0", "build": "vite build", "preview": "vite preview --host 0.0.0.0", "test": "node --test test/feedback_payload_test.js test/session_test.js" },
+  "dependencies": { "@vitejs/plugin-react": "6.1.2", "vite": "8.3.4", "react": "19.3.0", "react-dom": "19.3.0" },
+  "devDependencies": {}
+}
