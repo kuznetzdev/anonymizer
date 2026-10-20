@@ -22,6 +22,8 @@ Development and offline evaluation of the existing NER model under the fixed 17-
 - Checksum validity does not establish that a synthetic identifier is allocated to a real person.
 - Class support, document lengths, scenario composition, and editor review counts are recorded in the generated private `quality_report.json` and release reports; no unverified values are asserted here.
 - The release must remain `HOLD` for an evaluation gate when a target label lacks required support or editorial review.
+- The current authored evaluation splits provide 2 examples per priority label in test and 1 in challenge (2 for `DISEASE`), below the minimum of 30. Their metadata records `evaluation_ready=false` and `editorial_review_complete=false`.
+- The 1.17.0 candidate failed the preregistered development gates; no independent test/challenge metrics support a release claim.
 
 ## Licensing
 

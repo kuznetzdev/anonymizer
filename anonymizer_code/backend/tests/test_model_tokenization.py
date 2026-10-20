@@ -103,6 +103,23 @@ class TokenizationTests(unittest.TestCase):
             [(8, 10, "ID")],
         )
 
+    def test_training_can_emit_v3_without_changing_the_v2_default(self) -> None:
+        train = [{"text": "Пациент Мария", "entities": [{"start": 8, "end": 13, "label": "PER"}]}]
+        validation = [{"text": "Врач Ирина", "entities": [{"start": 5, "end": 10, "label": "PER"}]}]
+
+        default_artifact, _ = train_model({"PER"}, train, validation)
+        v3_artifact, _ = train_model({"PER"}, train, validation, feature_version=3)
+
+        self.assertEqual(decode_artifact(default_artifact)[-1], 2)
+        self.assertEqual(decode_artifact(v3_artifact)[-1], 3)
+        self.assertEqual(predict("Пациент Мария", v3_artifact)[0]["label"], "PER")
+
+    def test_v3_training_rejects_v2_warm_start(self) -> None:
+        train = [{"text": "Пациент Мария", "entities": [{"start": 8, "end": 13, "label": "PER"}]}]
+        validation = [{"text": "Врач Ирина", "entities": [{"start": 5, "end": 10, "label": "PER"}]}]
+        with self.assertRaisesRegex(ValueError, "Warm-start training supports v2 artifacts only"):
+            train_model({"PER"}, train, validation, initial_artifact=artifact(2), feature_version=3)
+
     def test_sensitive_span_at_final_unicode_character_of_max_length_text(self) -> None:
         text = "a " * 9999 + " Ё"
         hasher = FeatureHasher(n_features=FEATURES, input_type="dict", alternate_sign=False)
