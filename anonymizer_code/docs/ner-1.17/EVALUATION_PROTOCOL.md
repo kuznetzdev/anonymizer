@@ -2,6 +2,8 @@
 
 Freeze this protocol before selecting or scoring the 1.17.0 candidate. The scorer uses a fixed evaluation policy with all 17 non-deprecated built-in labels active, including `DISEASE`, for both baseline and candidate. This matches the backend's default category state (`active TRUE`); runtime-specific category overrides are outside this offline comparison.
 
+The safety target set is all 17 non-deprecated built-in labels: `APART`, `COUNTRY`, `DISEASE`, `EMAIL`, `HOUSE`, `INN`, `INSTITUTION`, `KPP`, `LOCALITY`, `OGRN`, `ORG`, `PASSPORT`, `PER`, `PHONE`, `REGION`, `SNILS`, and `STREET`. Legacy `ADDR` is excluded because the ontology marks it deprecated. A target label missing from a required split has insufficient support and cannot be reported as a pass.
+
 ## Development data
 
 Development uses the common validation and medical validation splits only. It may guide the single planned candidate run. The 1.16.0 test and challenge are sealed and excluded from tuning and scoring. The 1.17.0 test and challenge are created from independent authored source groups, frozen with hashes, and each scored once after the candidate is frozen.
