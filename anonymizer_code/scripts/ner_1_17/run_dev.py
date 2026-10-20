@@ -12,6 +12,13 @@ from typing import TypedDict
 
 ROOT = Path(__file__).resolve().parents[3]
 EXPECTED_BASELINE_SHA256 = "e39ca86b2daa1a3f3e505ca644222e0e148fe4b4a2224b5a6b692188346700ba"
+EXPECTED_DATA_SHA256 = {
+    "common_train": "921716a5524295c1f8d59bd23904a4104e1905620e8d1888b88b7e1a3767d6bd",
+    "common_validation": "7f0a3eb27a64fe5a217c296f59a2930291fdf6faa5a71e5c85aaf334529df59b",
+    "medical_train": "43a7f35e0d479ab0edf4abfa23acdd4832b96ad557c8a03a5882b69a3bae6d28",
+    "medical_validation": "dca4098b494da6b7e62d70c93126ddbd71e8df324b92568fc60c03ff3ad0949f",
+    "ontology": "618768a500e52b8d5505ed99aad79584069818a3588a9d3dfff10bc7320d58e7",
+}
 sys.path.insert(0, str(ROOT / "anonymizer_code" / "backend"))
 
 import numpy
@@ -175,6 +182,9 @@ def main() -> None:
     before = {name: sha256(path) for name, path in input_paths.items()}
     if before["baseline_artifact"] != EXPECTED_BASELINE_SHA256:
         raise ValueError("Frozen 1.16.0 candidate hash does not match the registered baseline")
+    for name, expected in EXPECTED_DATA_SHA256.items():
+        if before[name] != expected:
+            raise ValueError(f"Frozen development input hash does not match the registered {name} input")
 
     ontology = json.loads(ontology_path.read_text(encoding="utf-8-sig"))
     labels = {item["label"] for item in ontology["categories"] if item["label"] != "ADDR"}
@@ -200,6 +210,11 @@ def main() -> None:
         "artifact_features": hasher.n_features,
         "artifact_classes": len(classes),
         "labels": sorted(labels),
+        "masking_policy": {
+            "active_labels": sorted(labels),
+            "all_builtin_labels_enabled": True,
+            "disease_contributes_to_document_leak": True,
+        },
         "input_sha256": before,
         "git_revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "baseline_training": {

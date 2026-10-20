@@ -21,6 +21,8 @@ Only these data files are copied into the isolated worktree:
 
 The validation scorer reads common and medical validation only. Closed test and challenge records are not inputs to PR1. The artifact, validation files and aggregate output remain under ignored `references/`.
 
+The runner requires the hashes above for all four corpus files and also pins the ontology SHA-256 to `618768a500e52b8d5505ed99aad79584069818a3588a9d3dfff10bc7320d58e7`. It records code hashes and Git revision as run provenance. Scoring uses all 17 non-deprecated labels as active, including `DISEASE`, for consistency with the backend default.
+
 ## Prior development decision
 
 The existing 1.16.0 development report compared candidate 1.16.0 with 1.15.0 on common and medical validation. It returned `HOLD`: medical document leak improved by `0.006018` (0.60 percentage points), below the preregistered `0.01` minimum, and medical `SNILS` coverage fell by `0.020408` (2.04 percentage points). The 1.16.0 report is historical context; the new runner recomputes aggregate metrics for the frozen 1.16 artifact and records hashes.

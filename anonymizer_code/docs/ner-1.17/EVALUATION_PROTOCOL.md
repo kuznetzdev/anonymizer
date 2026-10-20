@@ -1,6 +1,6 @@
 # NER 1.17.0 evaluation protocol
 
-Freeze this protocol before selecting or scoring the 1.17.0 candidate. The scorer must use the same model code, active-label set and masking policy for baseline and candidate.
+Freeze this protocol before selecting or scoring the 1.17.0 candidate. The scorer uses a fixed evaluation policy with all 17 non-deprecated built-in labels active, including `DISEASE`, for both baseline and candidate. This matches the backend's default category state (`active TRUE`); runtime-specific category overrides are outside this offline comparison.
 
 ## Development data
 

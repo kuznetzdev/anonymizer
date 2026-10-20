@@ -4,7 +4,7 @@
 
 - Added artifact v3 inference support using the exact `combined_features` contract. Artifact v1/v2 logic remains on its prior feature contract; default training output is unchanged.
 - Added regression coverage for v3 paired features, Unicode span offsets, and a sensitive span at character offset `[19999, 20000)` in a 20,000-character input.
-- Added `scripts/ner_1_17/run_dev.py`, which verifies the frozen candidate SHA, artifact format/dimensions, allowed input hashes and hashes at end of scoring. It reads only common and medical validation; its output is aggregate metrics and hashes.
+- Added `scripts/ner_1_17/run_dev.py`, which verifies the frozen candidate SHA, registered train/validation/ontology hashes, artifact format/dimensions, and unchanged inputs at end of scoring. It reads only common and medical validation for scoring; its output is aggregate metrics and hashes. The fixed masking policy enables all 17 non-deprecated built-in labels, including `DISEASE`.
 - Added the frozen baseline and preregistered evaluation protocol under `docs/ner-1.17/`.
 - Isolated testing in a Python 3.12.7 virtual environment outside the worktree. All backend requirements installed, including `psycopg 3.2.12`; no dependency or requirement file changed.
 
