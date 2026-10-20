@@ -2,7 +2,7 @@
 
 Freeze this protocol before selecting or scoring the 1.17.0 candidate. The scorer uses a fixed evaluation policy with all 17 non-deprecated built-in labels active, including `DISEASE`, for both baseline and candidate. This matches the backend's default category state (`active TRUE`); runtime-specific category overrides are outside this offline comparison.
 
-The safety target set is all 17 non-deprecated built-in labels: `APART`, `COUNTRY`, `DISEASE`, `EMAIL`, `HOUSE`, `INN`, `INSTITUTION`, `KPP`, `LOCALITY`, `OGRN`, `ORG`, `PASSPORT`, `PER`, `PHONE`, `REGION`, `SNILS`, and `STREET`. Legacy `ADDR` is excluded because the ontology marks it deprecated. A target label missing from a required split has insufficient support and cannot be reported as a pass.
+The preregistered priority target set is `APART`, `COUNTRY`, `DISEASE`, `HOUSE`, `INSTITUTION`, `LOCALITY`, `ORG`, `PASSPORT`, `PER`, `REGION`, `SNILS`, and `STREET`. This covers the named quality priorities and every address component. The remaining supported labels (`EMAIL`, `INN`, `KPP`, `OGRN`, `PHONE`) stay in the 17-label model and are reported separately. Legacy `ADDR` is excluded because the ontology marks it deprecated. A priority target missing from a required split has insufficient support and cannot be reported as a pass.
 
 ## Development data
 
