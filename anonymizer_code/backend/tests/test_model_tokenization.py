@@ -10,7 +10,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction import FeatureHasher
 
-from app.model import FEATURES, SNILS_RE, decode_artifact, labels_for_tokens, predict, role_features, tokenize, train_model
+from app.model import FEATURES, SNILS_RE, combined_features, decode_artifact, labels_for_tokens, predict, tokenize, train_model
 
 
 def artifact(
@@ -47,10 +47,10 @@ def _snils_sequence_artifact() -> bytes:
     return artifact(2, ["B-SNILS", "I-SNILS", "O"], [0.0, 1.0, -1.0], weights)
 
 
-def _role_feature_artifact(text: str, token_index: int, feature: str) -> bytes:
+def _combined_feature_artifact(text: str, token_index: int, feature: str) -> bytes:
     hasher = FeatureHasher(n_features=FEATURES, input_type="dict", alternate_sign=False)
-    if feature not in role_features(tokenize(text), token_index):
-        raise AssertionError(f"Expected role feature is missing: {feature}")
+    if feature not in combined_features(tokenize(text), token_index):
+        raise AssertionError(f"Expected combined feature is missing: {feature}")
     feature_index = int(hasher.transform([{feature: 1.0}]).indices[0])
     weights = csr_matrix(
         (np.array([10.0]), (np.array([1]), np.array([feature_index]))),
@@ -90,9 +90,12 @@ class TokenizationTests(unittest.TestCase):
             ],
         )
 
-    def test_v3_artifact_uses_role_features_and_preserves_unicode_offsets(self) -> None:
+    def test_v3_artifact_uses_combined_features_and_preserves_unicode_offsets(self) -> None:
         text = "🙂 улица Ёж"
-        model = _role_feature_artifact(text, 2, "role=street|offset=-1|word=ёж")
+        features = combined_features(tokenize(text), 2)
+        self.assertEqual(features["pair-1=ёж|улица"], 1.0)
+        self.assertEqual(features["pairshape-1=Aa|aaaaa"], 1.0)
+        model = _combined_feature_artifact(text, 2, "pair-1=ёж|улица")
 
         self.assertEqual(decode_artifact(model)[-1], 3)
         self.assertEqual(
