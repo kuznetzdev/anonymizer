@@ -26,6 +26,16 @@ LABEL_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,31}$")
 MAX_TEXT = 20000
 FEATURES = 1 << 14
 BATCH_SIZE = 4096
+STREET_CONTEXT = frozenset({
+    "аллея", "бульвар", "наб", "набережная", "пер", "переулок", "пл", "площадь",
+    "просп", "проспект", "проезд", "ш", "шоссе", "тупик", "ул", "улица", "улице",
+    "улицы", "улицу", "улицей",
+})
+PERSON_CONTEXT = frozenset({
+    "врач", "врача", "врачи", "врачом", "доктор", "доктора", "доктором", "пациент",
+    "пациента", "пациентка", "пациенту", "гражданин", "гражданка", "господин", "госпожа",
+    "сотрудник", "сотрудница", "коллега", "медсестра", "фельдшер",
+})
 
 
 def tokenize(text: str) -> list[tuple[str, int, int]]:
@@ -58,6 +68,22 @@ def features(tokens: Sequence[tuple[str, int, int]], index: int) -> dict[str, fl
         if len(token) >= n:
             result["pre=" + token[:n].lower()] = 1.0
             result["suf=" + token[-n:].lower()] = 1.0
+    return result
+
+
+def role_features(tokens: Sequence[tuple[str, int, int]], index: int) -> dict[str, float]:
+    """Version 3 feature contract: bind tokens to nearby role cues."""
+    result = features(tokens, index)
+    token = tokens[index][0].lower()
+    for offset in (-4, -3, -2, -1, 1, 2, 3, 4):
+        pos = index + offset
+        if not 0 <= pos < len(tokens):
+            continue
+        cue = tokens[pos][0].lower()
+        if cue in STREET_CONTEXT:
+            result[f"role=street|offset={offset}|word={token}"] = 1.0
+        if cue in PERSON_CONTEXT:
+            result[f"role=person|offset={offset}|word={token}"] = 1.0
     return result
 
 
@@ -313,7 +339,7 @@ def train_model(
 def decode_artifact(artifact: bytes) -> tuple[FeatureHasher, list[str], csr_matrix, np.ndarray, int]:
     with np.load(BytesIO(artifact), allow_pickle=False) as saved:
         artifact_version = int(saved["version"][0])
-        if artifact_version not in (1, 2):
+        if artifact_version not in (1, 2, 3):
             raise ValueError("Unsupported model artifact version")
         feature_count = int(saved["features"][0])
         classes = saved["classes"].astype(str).tolist()
@@ -328,7 +354,8 @@ def predict(text: str, artifact: bytes) -> list[dict[str, Any]]:
     tokens = _tokenize_legacy(text) if artifact_version == 1 else tokenize(text)
     if not tokens:
         return []
-    matrix = hasher.transform([features(tokens, i) for i in range(len(tokens))]).tocsr()
+    feature_fn = role_features if artifact_version == 3 else features
+    matrix = hasher.transform([feature_fn(tokens, i) for i in range(len(tokens))]).tocsr()
     decision = (matrix @ weights.T).toarray() + intercept
     shifted = decision - decision.max(axis=1, keepdims=True)
     exp_scores = np.exp(shifted)

@@ -10,7 +10,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction import FeatureHasher
 
-from app.model import FEATURES, SNILS_RE, decode_artifact, labels_for_tokens, predict, tokenize, train_model
+from app.model import FEATURES, SNILS_RE, decode_artifact, labels_for_tokens, predict, role_features, tokenize, train_model
 
 
 def artifact(
@@ -47,6 +47,18 @@ def _snils_sequence_artifact() -> bytes:
     return artifact(2, ["B-SNILS", "I-SNILS", "O"], [0.0, 1.0, -1.0], weights)
 
 
+def _role_feature_artifact(text: str, token_index: int, feature: str) -> bytes:
+    hasher = FeatureHasher(n_features=FEATURES, input_type="dict", alternate_sign=False)
+    if feature not in role_features(tokenize(text), token_index):
+        raise AssertionError(f"Expected role feature is missing: {feature}")
+    feature_index = int(hasher.transform([{feature: 1.0}]).indices[0])
+    weights = csr_matrix(
+        (np.array([10.0]), (np.array([1]), np.array([feature_index]))),
+        shape=(2, FEATURES),
+    )
+    return artifact(3, ["O", "B-ID"], [1.0, 0.0], weights)
+
+
 class TokenizationTests(unittest.TestCase):
     def test_splits_unicode_letters_from_digits_and_preserves_offsets(self) -> None:
         text = "ИНН5964761404 Ёж_12"
@@ -76,6 +88,32 @@ class TokenizationTests(unittest.TestCase):
                 {"start": 0, "end": 3, "label": "ID", "confidence": 1.0},
                 {"start": 3, "end": len(text), "label": "ID", "confidence": 1.0},
             ],
+        )
+
+    def test_v3_artifact_uses_role_features_and_preserves_unicode_offsets(self) -> None:
+        text = "🙂 улица Ёж"
+        model = _role_feature_artifact(text, 2, "role=street|offset=-1|word=ёж")
+
+        self.assertEqual(decode_artifact(model)[-1], 3)
+        self.assertEqual(
+            [(span["start"], span["end"], span["label"]) for span in predict(text, model)],
+            [(8, 10, "ID")],
+        )
+
+    def test_sensitive_span_at_final_unicode_character_of_max_length_text(self) -> None:
+        text = "a " * 9999 + " Ё"
+        hasher = FeatureHasher(n_features=FEATURES, input_type="dict", alternate_sign=False)
+        feature_index = int(hasher.transform([{"word=ё": 1.0}]).indices[0])
+        weights = csr_matrix(
+            (np.array([10.0]), (np.array([1]), np.array([feature_index]))),
+            shape=(2, FEATURES),
+        )
+        model = artifact(2, ["O", "B-ID"], [1.0, 0.0], weights)
+
+        self.assertEqual(len(text), 20000)
+        self.assertEqual(
+            [(span["start"], span["end"], span["label"]) for span in predict(text, model)],
+            [(19999, 20000, "ID")],
         )
 
     def test_model_confidence_is_bounded_and_deterministic(self) -> None:
