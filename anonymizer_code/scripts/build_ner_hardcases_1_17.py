@@ -247,8 +247,8 @@ def build_cases(
     ontology_labels: set[str],
     scenarios: dict[str, list[authored_scenarios.AuthoredRecord]] | None = None,
 ) -> tuple[Case, ...]:
-    if ontology_labels - {"ADDR"} != ACTIVE_LABELS:
-        raise ValueError("Active ontology must contain exactly the registered 17 labels")
+    if not ACTIVE_LABELS <= ontology_labels - {"ADDR"}:
+        raise ValueError("Ontology is missing registered 1.17 labels")
     cases: list[Case] = []
     for split in SPLITS:
         for label in sorted(ACTIVE_LABELS):
@@ -274,8 +274,8 @@ def build_cases(
 
 
 def validate_cases(cases: list[Case] | tuple[Case, ...], ontology_labels: set[str]) -> None:
-    if ontology_labels - {"ADDR"} != ACTIVE_LABELS:
-        raise ValueError("Active ontology must contain exactly the registered 17 labels")
+    if not ACTIVE_LABELS <= ontology_labels - {"ADDR"}:
+        raise ValueError("Ontology is missing registered 1.17 labels")
     seen_templates: dict[str, str] = {}
     seen_groups: dict[str, str] = {}
     seen_text: dict[str, str] = {}
