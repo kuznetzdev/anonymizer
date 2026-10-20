@@ -15,6 +15,7 @@ from fastapi import FastAPI, HTTPException, Query, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 from psycopg.types.json import Jsonb
 
+from .category_taxonomy import DOCUMENT_LABEL_DESCRIPTIONS, category_parent
 from .config import config
 from .model import normalize_legacy_prediction_labels, predict
 from .seed import load_seed_model
@@ -209,7 +210,8 @@ def categories(request: Request) -> dict[str, Any]:
     return {"categories": [
         {
             **category,
-            "description": _category_descriptions.get(category["label"]),
+            "description": _category_descriptions.get(category["label"]) or DOCUMENT_LABEL_DESCRIPTIONS.get(category["label"]),
+            "parent_class": category_parent(category["label"]),
             "deprecated": category["label"] in LEGACY_CATEGORY_LABELS,
         }
         for category in active_categories()
@@ -392,7 +394,14 @@ def analyze(body: TextInput, request: Request) -> dict[str, Any]:
         if span["label"] in active
     ]
     spans.sort(key=lambda span: (span["start"], span["end"]))
-    entities = [{"id": str(uuid.uuid4()), **span, "text": body.text[span["start"]:span["end"]]} for span in spans]
+    entities = [
+        {
+            "id": str(uuid.uuid4()), **span,
+            "text": body.text[span["start"]:span["end"]],
+            **({"parent_class": parent} if (parent := category_parent(span["label"])) else {}),
+        }
+        for span in spans
+    ]
     masked = body.text
     for span in reversed(spans):
         masked = masked[:span["start"]] + f"<{span['label']}>" + masked[span["end"]:]
