@@ -96,6 +96,100 @@ def test_quoted_disease_patch_is_narrow_and_preserves_existing_spans() -> None:
         build_release.patch_quoted_diseases([row, row])
 
 
+def test_legacy_document_corrections_are_guarded_and_remove_only_reviewed_clones() -> None:
+    _, _, source_train, source_validation = build_release._base_records()
+    train = [{"text": row["text"], "entities": [dict(entity) for entity in row["entities"]]} for row in source_train]
+    validation = [{"text": row["text"], "entities": [dict(entity) for entity in row["entities"]]} for row in source_validation]
+    train.append({"text": "Договор № 12345678901 — отдельный пример договора.", "entities": []})
+    train, validation, audit = build_release.correct_legacy_documents(train, validation)
+
+    assert len(train) == len(source_train) - 6 + 1
+    assert len(validation) == len(source_validation) - 2
+    expected = {
+        2097: ("12345678901", "OTHER_DOCUMENT_ID"),
+        8306: ("DOC-00000051", "OTHER_DOCUMENT_ID"),
+        8315: ("MED-000060", "OTHER_DOCUMENT_ID"),
+        8307: ("00000052", "MEDICAL_RECORD_ID"),
+        8311: ("00000056", "MEDICAL_RECORD_ID"),
+    }
+    for index, (surface, label) in expected.items():
+        target = source_train[index]
+        corrected_index = index - sum(1 for split, removed_index in build_release.OBSOLETE_NEGATIVE_ROWS if split == "train" and removed_index < index)
+        match = train[corrected_index]["entities"]
+        assert any(target["text"][entity["start"]:entity["end"]] == surface and entity["label"] == label for entity in match)
+    assert train[-1]["text"] == "Договор № 12345678901 — отдельный пример договора."
+    assert len(audit["annotations"]) == 5
+    assert len(audit["removed_reviewed_near_clones"]) == 8
+    assert all(item["entities"] == [] and item["source_sha256"] for item in audit["removed_reviewed_near_clones"])
+    bad_train = list(source_train)
+    bad_train[8306] = {"text": "different", "entities": []}
+    with pytest.raises(ValueError, match="source changed"):
+        build_release.correct_legacy_documents(bad_train, source_validation)
+
+
+def test_audited_common_document_cues_preserve_old_spans_and_reject_sum_context() -> None:
+    _, source = build_release._common_records()
+    corrected, audit = build_release.annotate_common_documents(source)
+    assert audit["actual_additions"] == {
+        "train": {"MEDICAL_RECORD_ID": 40, "OTHER_DOCUMENT_ID": 90, "_CONTRACT_DOCUMENT_ID": 41},
+        "validation": {"MEDICAL_RECORD_ID": 0, "OTHER_DOCUMENT_ID": 8, "_CONTRACT_DOCUMENT_ID": 0},
+    }
+    for split, rows in source.items():
+        for index, row in enumerate(rows):
+            updated = corrected[split][index]
+            assert all(entity in updated["entities"] for entity in row["entities"])
+    contract_pattern = build_release.COMMON_CUES["_CONTRACT_DOCUMENT_ID"]
+    assert contract_pattern.search("Сумма по договору: 905130 рублей") is None
+    assert contract_pattern.search("Номер договора № 905130") is not None
+    assert contract_pattern.search("Номер договора № 12345678901234567890123456") is None
+    medical_pattern = build_release.COMMON_CUES["MEDICAL_RECORD_ID"]
+    assert medical_pattern.search("медкарта № 000123") is not None
+    assert medical_pattern.search("номер карты учреждения 000123") is None
+
+
+def test_release_snapshot_composes_sources_without_multiplication_or_cross_split_reuse() -> None:
+    _, common = build_release._common_records()
+    common, _ = build_release.annotate_common_documents(common)
+    _, _, medical_train, medical_validation = build_release._base_records()
+    medical_train, medical_validation, _ = build_release.correct_legacy_documents(medical_train, medical_validation)
+    medical_train, _ = build_release.normalize_street_prefixes(medical_train)
+    medical_validation, _ = build_release.normalize_street_prefixes(medical_validation)
+    medical_train, _ = build_release.patch_quoted_diseases(medical_train)
+    authored, _ = build_release._validate_case_set(build_release._cases(), {
+        "train": common["train"] + medical_train,
+        "validation": common["validation"] + medical_validation,
+    })
+    train_sources = [("common", common["train"]), ("medical", medical_train), ("authored", authored["train"])]
+    validation_sources = [("common", common["validation"]), ("medical", medical_validation), ("authored", authored["validation"])]
+    train_texts = {row["text"] for _, rows in train_sources for row in rows}
+    validation_texts = {row["text"] for _, rows in validation_sources for row in rows}
+    assert train_texts.isdisjoint(validation_texts)
+    train, train_audit = build_release._combine_split("train", train_sources, validation_texts)
+    validation, validation_audit = build_release._combine_split("validation", validation_sources, train_texts)
+    assert train_audit["records_before_deduplication"] == 13731
+    assert validation_audit["records_before_deduplication"] == 2218
+    assert len(train) == 13731
+    assert len(validation) == 2218
+    assert train_audit["exact_duplicate_count"] == validation_audit["exact_duplicate_count"] == 0
+
+
+def test_runner_preflight_rejects_mismatched_sources_and_baselines(tmp_path: Path) -> None:
+    source_paths = [tmp_path / "common-train.jsonl", tmp_path / "common-val.jsonl", tmp_path / "medical-val.jsonl"]
+    for path in source_paths:
+        path.write_bytes(b"frozen")
+    quality = {"base": {
+        "common_train_sha256": train_candidate.sha256(source_paths[0]),
+        "common_validation_sha256": train_candidate.sha256(source_paths[1]),
+        "medical_validation_sha256": train_candidate.sha256(source_paths[2]),
+    }}
+    changed_quality = {"base": {**quality["base"], "common_train_sha256": "changed"}}
+    with pytest.raises(ValueError, match="common_train_sha256"):
+        train_candidate._validate_release_provenance(*source_paths, changed_quality, b"baseline16", b"baseline17")
+
+    with pytest.raises(ValueError, match="Baseline 1.16 artifact hash changed"):
+        train_candidate._validate_release_provenance(*source_paths, quality, b"baseline16", b"baseline17")
+
+
 def test_duplicate_normalized_text_and_masked_shape_are_rejected() -> None:
     inherited = {"train": [{"text": "Пациентка Анна пришла.", "entities": [{"start": 10, "end": 14, "label": "PER"}]}], "validation": []}
     same_text = [("case-1", "train", "family-a", "Пациентка [[PER|Анна]] пришла.", "fixture")]
@@ -104,6 +198,23 @@ def test_duplicate_normalized_text_and_masked_shape_are_rejected() -> None:
     clone = [("case-2", "validation", "family-b", "Пациентка [[PER|Мария]] пришла.", "fixture")]
     with pytest.raises(ValueError, match="Masked-shape clone"):
         build_release._validate_case_set(clone, inherited)
+
+
+def test_full_snapshot_dedupes_identical_annotations_and_rejects_conflicts_or_cross_split_text() -> None:
+    common = [{"text": "Договор № 12345", "entities": [{"start": 10, "end": 15, "label": "OTHER_DOCUMENT_ID"}]}]
+    medical = [{"text": "Договор № 12345", "entities": [{"start": 10, "end": 15, "label": "OTHER_DOCUMENT_ID"}]}]
+    combined, audit = build_release._combine_split("train", [("common", common), ("medical", medical)], set())
+    assert combined == common
+    assert audit["source_record_counts"] == {"common": 1, "medical": 1}
+    assert audit["records_before_deduplication"] == 2
+    assert audit["records_after_deduplication"] == 1
+    assert audit["exact_duplicate_count"] == 1
+
+    conflicting = [{"text": "Договор № 12345", "entities": [{"start": 10, "end": 15, "label": "PASSPORT"}]}]
+    with pytest.raises(ValueError, match="Conflicting annotations"):
+        build_release._combine_split("train", [("common", common), ("medical", conflicting)], set())
+    with pytest.raises(ValueError, match="across release splits"):
+        build_release._combine_split("validation", [("common", common)], {"Договор № 12345"})
 
 
 def test_family_cannot_cross_splits() -> None:
@@ -134,7 +245,7 @@ def test_synthetic_import_zip_roundtrips_and_copies_test_member_exactly() -> Non
         "validation": _parse_jsonl(validation_bytes, "validation", labels, DEFAULT_LIMITS),
         "test": _parse_jsonl(opaque_test_bytes, "test", labels, DEFAULT_LIMITS),
     }
-    release = _make_release(build_release.CORPUS_ID, "1.18.0", records)
+    release = _make_release(build_release.CORPUS_ID, build_release.VERSION, records)
     archive_bytes = build_release._zip_bytes({
         "manifest.json": _manifest_for_release(release),
         "train.jsonl": _canonical_records_bytes(records["train"]),
@@ -176,5 +287,6 @@ def test_parent_document_score_accepts_exact_span_with_wrong_child(monkeypatch: 
     leaf = train_candidate._per_label_exact(rows, b"unused", {"PASSPORT", "MEDICAL_RECORD_ID"})
     parent = train_candidate._parent_document_exact(rows, b"unused")
     assert leaf["PASSPORT"]["false_negative"] == 1
+    assert leaf["PASSPORT"]["support"] == 1
     assert parent["true_positive"] == 1
     assert parent["f1"] == 1

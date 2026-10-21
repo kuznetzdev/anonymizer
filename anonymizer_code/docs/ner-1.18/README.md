@@ -1,4 +1,4 @@
-# Anonymizer NER 1.18.0
+# Anonymizer NER 1.18 — current patch 1.18.1
 
 ## Scope and decisions
 
@@ -14,12 +14,18 @@ activated by building or evaluating this release.
 - Patient cards, ambulatory charts, medical charts, and case histories all use
   `MEDICAL_RECORD_ID`. The earlier proposed `PATIENT_CARD_ID` remains readable
   through existing routing metadata, but is absent from new training examples.
-- Start with immutable 1.16 train/validation. Replace the 1.17 draft additions
-  with reviewed 1.18 examples instead of accumulating their defects. The 1.17
-  candidate and its original results remain unchanged.
+- Build a standalone snapshot from the immutable common and medical 1.16
+  train/validation sources plus the 74 reviewed 1.18 cases. Migrate explicit
+  document numbers to the expanded ontology before combining the sources.
+  Train on the released split once; do not mix the old common corpus into it
+  again. The 1.17 draft additions are excluded; its candidate and results remain
+  unchanged.
 - Correct unequivocal generic STREET prefixes and the reviewed missing quoted
   disease mentions in the new copy. Keep source releases unchanged and record
   every correction in the build report.
+- Retain one reviewed 11-digit contract-number contrast with its correct
+  `OTHER_DOCUMENT_ID` label, and remove eight near-clones of that old group.
+  Keep known medcard and contract numbers out of the negative class.
 - Keep the inherited test bytes unchanged. They do not establish independent
   evaluation readiness for the expanded ontology. Do not manufacture extra
   test examples to meet a support threshold. Do not score sealed challenge data.
@@ -36,6 +42,26 @@ Source cases and executable release checks live in
 `scripts/ner_1_18/` and `backend/tests/test_ner_1_18_*.py`.
 Corpus payloads and model artifacts remain under ignored `references/`.
 
+## Examples of the boundaries
+
+These are extracts of the authored cases; the generated `authored_review.md`
+contains complete texts and exact offsets.
+
+| Text and role | Annotation |
+| --- | --- |
+| Врач Илья Боткин | `PER`: Илья Боткин |
+| ул. Боткина | `STREET`: Боткина |
+| болезнь Боткина не выявлена | `DISEASE`: болезнь Боткина |
+| СНИЛС 791-612-345 11 | `SNILS`: 791-612-345 11 |
+| телефон +7 916 123-45-11 | `PHONE`: +7 916 123-45-11 |
+| технический счётчик обработки: 79161234511 единиц за смену | No entity |
+| в паспорте лабораторного анализатора номер документа СВ-71-003604 | `OTHER_DOCUMENT_ID`: СВ-71-003604 |
+| серийный номер оборудования | No document annotation without a document identifier cue |
+
+The disease remains annotated under negation. Its preservation in masked output
+is a separate option. `DOCUMENT` groups document leaves; it does not replace the
+concrete labels in these examples.
+
 ## Evaluation boundary
 
 Freeze source, data, protocol, environment, and baseline artifact hashes before
@@ -47,6 +73,11 @@ disease cannot conceal a missed personal identifier.
 Passing structural checks or editorial review does not establish model quality.
 The candidate stays `HOLD` until development and independent evaluation gates
 are satisfied. See [evaluation protocol](EVALUATION_PROTOCOL.md).
+
+The original 1.18.0 release and input snapshots are retained. Its training
+process was interrupted and produced no candidate artifact or completed
+metrics. The 1.18.1 correction follows a source-annotation audit, before any
+1.18 model scores were available. It is not a hyperparameter search.
 
 ## Terminology references
 
