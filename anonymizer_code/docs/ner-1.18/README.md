@@ -73,6 +73,8 @@ disease cannot conceal a missed personal identifier.
 Passing structural checks or editorial review does not establish model quality.
 The candidate stays `HOLD` until development and independent evaluation gates
 are satisfied. See [evaluation protocol](EVALUATION_PROTOCOL.md).
+The completed run, measured gate failures, corpus counts, and artifact hashes are
+recorded in [RESULTS.md](RESULTS.md).
 
 The original 1.18.0 release and input snapshots are retained. Its training
 process was interrupted and produced no candidate artifact or completed
