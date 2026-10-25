@@ -8,7 +8,7 @@ import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import TypedDict
+from typing import Mapping, TypedDict
 
 ROOT = Path(__file__).resolve().parents[3]
 EXPECTED_BASELINE_SHA256 = "e39ca86b2daa1a3f3e505ca644222e0e148fe4b4a2224b5a6b692188346700ba"
@@ -80,7 +80,12 @@ def read_jsonl(path: Path, labels: set[str]) -> list[Record]:
     return rows
 
 
-def score(rows: list[Record], artifact: bytes, labels: set[str]) -> dict[str, object]:
+def score(
+    rows: list[Record],
+    artifact: bytes,
+    labels: set[str],
+    prediction_label_map: Mapping[str, str] | None = None,
+) -> dict[str, object]:
     gold: set[tuple[int, int, int, str]] = set()
     predicted: set[tuple[int, int, int, str]] = set()
     gold_by_label: Counter[str] = Counter()
@@ -92,12 +97,12 @@ def score(rows: list[Record], artifact: bytes, labels: set[str]) -> dict[str, ob
     predicted_masked_characters = 0
 
     for row_index, row in enumerate(rows):
-        entities = row["entities"]
-        spans = [
-            span
-            for span in normalize_legacy_prediction_labels(predict(row["text"], artifact))
-            if span["label"] in labels
-        ]
+        entities = [item for item in row["entities"] if item["label"] in labels]
+        spans = []
+        for span in normalize_legacy_prediction_labels(predict(row["text"], artifact)):
+            label = (prediction_label_map or {}).get(span["label"], span["label"])
+            if label in labels:
+                spans.append({**span, "label": label})
         gold.update((row_index, item["start"], item["end"], item["label"]) for item in entities)
         predicted.update((row_index, item["start"], item["end"], item["label"]) for item in spans)
         documents_with_gold += int(bool(entities))
