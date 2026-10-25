@@ -1,0 +1,16 @@
+# External source review for NER 1.17.0
+
+Reviewed 2026-10-20. External resources informed scenario coverage only; no third-party records or text are imported into 1.17.0. Rights below describe the cited repository/source terms, not a blanket grant for redistributed derivatives or third-party material.
+
+| Source | Intended use | Rights and constraints | Decision |
+|---|---|---|---|
+| [Synthea](https://github.com/synthetichealth/synthea) | Synthetic longitudinal health record structure | Repository code is Apache-2.0. Generated terminology and exported formats may have separate terms. | Reference scenarios only; do not import outputs without checking each terminology/export license. |
+| [NHS synthetic clinical notes](https://github.com/nhsengland/synthetic_clinical_notes) | Longitudinal synthetic notes, abbreviations, spelling variation | Repository separates code/docs/data terms; the README describes synthetic generation, but output-data reuse terms need a clear determination. | No import pending explicit commercial-use and output-license confirmation. |
+| [ASQ-PHI](https://github.com/JamesWeatherhead/asq-phi) | Synthetic PHI prompts and adversarial negatives | Repository declares MIT and commercial use; English short-query distribution is unlike Russian medical documents. | Scenario inspiration only; no import because language/domain coverage is weak. |
+| [Microsoft clinical visit note summarization corpus](https://github.com/microsoft/clinical_visit_note_summarization_corpus) | Synthetic dialogue and visit-note structure | Repository states CC BY 4.0; archived. NOTICE includes MTSamples.com material, so source lineage and downstream rights need separate review. | No import; unclear third-party lineage and low incremental Russian NER value. |
+| [Human Disease Ontology](https://github.com/DiseaseOntology/HumanDiseaseOntology) / [OBO Foundry DOID terms](https://github.com/OBOFoundry/OBOFoundry.github.io/blob/master/ontology/doid.md) | Disease-name discovery and ontology terminology | DOID content is CC0; terminology alone does not provide annotated clinical context. | No import; may inform later manually authored terminology review. |
+| [Wikidata licensing](https://www.wikidata.org/wiki/Wikidata:Licensing) | Candidate public place/organization names | Main structured data is CC0; some textual namespaces have different terms, including CC BY-SA. Names can create ambiguous false positives. | No import; manual candidate discovery only after ambiguity review. |
+| [Mondo](https://github.com/monarch-initiative/mondo) | Disease-name discovery and mappings | Repository content is CC BY 4.0 with attribution requirements; no clinical note text. | No import; terminology-only and attribution needed. |
+| [Faker](https://faker.readthedocs.io/en/stable/index.html) | Reproducible synthetic entity values | MIT package; output stability can vary by version/provider and it does not ensure Russian identifier/checksum or clinical coherence. | Not added as a dependency; deterministic local fixtures are simpler and easier to audit. |
+
+Commercial-use criterion: no external records enter the corpus unless the exact data artifact, its upstream lineage, commercial/ML rights, redistribution terms, and incremental value are verified and recorded. This review found no resource that meets all criteria for the current release.

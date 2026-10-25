@@ -192,6 +192,8 @@ body { margin: 0; }
 .restore-button:hover { background: #f3f6ff; }
 .category-add-inline { max-width: 520px; margin-bottom: 15px; padding: 0 0 15px; border-bottom: 1px solid var(--border); }
 .category-list-page { display: grid; gap: 8px; }
+.category-group { display: grid; gap: 8px; }
+.category-group > h2 { margin: 14px 2px 0; color: var(--muted); font-size: 13px; font-weight: 700; }
 .category-section { padding: 10px 13px; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
 .category-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .category-description { margin: 6px 0 0; color: #718097; font-size: 11px; line-height: 1.45; }

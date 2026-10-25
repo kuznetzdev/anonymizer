@@ -10,7 +10,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from sklearn.feature_extraction import FeatureHasher
 
-from app.model import FEATURES, SNILS_RE, decode_artifact, labels_for_tokens, predict, tokenize, train_model
+from app.model import FEATURES, SNILS_RE, combined_features, decode_artifact, labels_for_tokens, predict, tokenize, train_model
 
 
 def artifact(
@@ -47,6 +47,18 @@ def _snils_sequence_artifact() -> bytes:
     return artifact(2, ["B-SNILS", "I-SNILS", "O"], [0.0, 1.0, -1.0], weights)
 
 
+def _combined_feature_artifact(text: str, token_index: int, feature: str) -> bytes:
+    hasher = FeatureHasher(n_features=FEATURES, input_type="dict", alternate_sign=False)
+    if feature not in combined_features(tokenize(text), token_index):
+        raise AssertionError(f"Expected combined feature is missing: {feature}")
+    feature_index = int(hasher.transform([{feature: 1.0}]).indices[0])
+    weights = csr_matrix(
+        (np.array([10.0]), (np.array([1]), np.array([feature_index]))),
+        shape=(2, FEATURES),
+    )
+    return artifact(3, ["O", "B-ID"], [1.0, 0.0], weights)
+
+
 class TokenizationTests(unittest.TestCase):
     def test_splits_unicode_letters_from_digits_and_preserves_offsets(self) -> None:
         text = "ИНН5964761404 Ёж_12"
@@ -76,6 +88,52 @@ class TokenizationTests(unittest.TestCase):
                 {"start": 0, "end": 3, "label": "ID", "confidence": 1.0},
                 {"start": 3, "end": len(text), "label": "ID", "confidence": 1.0},
             ],
+        )
+
+    def test_v3_artifact_uses_combined_features_and_preserves_unicode_offsets(self) -> None:
+        text = "🙂 улица Ёж"
+        features = combined_features(tokenize(text), 2)
+        self.assertEqual(features["pair-1=ёж|улица"], 1.0)
+        self.assertEqual(features["pairshape-1=Aa|aaaaa"], 1.0)
+        model = _combined_feature_artifact(text, 2, "pair-1=ёж|улица")
+
+        self.assertEqual(decode_artifact(model)[-1], 3)
+        self.assertEqual(
+            [(span["start"], span["end"], span["label"]) for span in predict(text, model)],
+            [(8, 10, "ID")],
+        )
+
+    def test_training_can_emit_v3_without_changing_the_v2_default(self) -> None:
+        train = [{"text": "Пациент Мария", "entities": [{"start": 8, "end": 13, "label": "PER"}]}]
+        validation = [{"text": "Врач Ирина", "entities": [{"start": 5, "end": 10, "label": "PER"}]}]
+
+        default_artifact, _ = train_model({"PER"}, train, validation)
+        v3_artifact, _ = train_model({"PER"}, train, validation, feature_version=3)
+
+        self.assertEqual(decode_artifact(default_artifact)[-1], 2)
+        self.assertEqual(decode_artifact(v3_artifact)[-1], 3)
+        self.assertEqual(predict("Пациент Мария", v3_artifact)[0]["label"], "PER")
+
+    def test_v3_training_rejects_v2_warm_start(self) -> None:
+        train = [{"text": "Пациент Мария", "entities": [{"start": 8, "end": 13, "label": "PER"}]}]
+        validation = [{"text": "Врач Ирина", "entities": [{"start": 5, "end": 10, "label": "PER"}]}]
+        with self.assertRaisesRegex(ValueError, "Warm-start training supports v2 artifacts only"):
+            train_model({"PER"}, train, validation, initial_artifact=artifact(2), feature_version=3)
+
+    def test_sensitive_span_at_final_unicode_character_of_max_length_text(self) -> None:
+        text = "a " * 9999 + " Ё"
+        hasher = FeatureHasher(n_features=FEATURES, input_type="dict", alternate_sign=False)
+        feature_index = int(hasher.transform([{"word=ё": 1.0}]).indices[0])
+        weights = csr_matrix(
+            (np.array([10.0]), (np.array([1]), np.array([feature_index]))),
+            shape=(2, FEATURES),
+        )
+        model = artifact(2, ["O", "B-ID"], [1.0, 0.0], weights)
+
+        self.assertEqual(len(text), 20000)
+        self.assertEqual(
+            [(span["start"], span["end"], span["label"]) for span in predict(text, model)],
+            [(19999, 20000, "ID")],
         )
 
     def test_model_confidence_is_bounded_and_deterministic(self) -> None:

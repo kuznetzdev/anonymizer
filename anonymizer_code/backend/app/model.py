@@ -61,6 +61,19 @@ def features(tokens: Sequence[tuple[str, int, int]], index: int) -> dict[str, fl
     return result
 
 
+def combined_features(tokens: Sequence[tuple[str, int, int]], index: int) -> dict[str, float]:
+    """Version 3 feature contract: bind tokens to nearby words and their shapes."""
+    result = features(tokens, index)
+    token = tokens[index][0].lower()
+    for offset in (-2, -1, 1, 2):
+        pos = index + offset
+        if 0 <= pos < len(tokens):
+            neighbor = tokens[pos][0].lower()
+            result[f"pair{offset}={token}|{neighbor}"] = 1.0
+            result[f"pairshape{offset}={shape(tokens[index][0])}|{shape(tokens[pos][0])}"] = 1.0
+    return result
+
+
 def labels_for_tokens(
     record: dict[str, Any], tokens: Sequence[tuple[str, int, int]], active: set[str],
     record_index: int | None = None,
@@ -157,9 +170,14 @@ def train_model(
     *,
     heldout_texts: set[str] | None = None,
     initial_artifact: bytes | None = None,
+    feature_version: int = 2,
 ) -> tuple[bytes, dict[str, Any]]:
     if not active_labels:
         raise ValueError("At least one active label is required")
+    if feature_version not in (2, 3):
+        raise ValueError("Training supports artifact feature versions 2 and 3")
+    if initial_artifact is not None and feature_version != 2:
+        raise ValueError("Warm-start training supports v2 artifacts only")
     train = _validated_unique_records(corpus_train, "training corpus")
     val = _validated_unique_records(corpus_validation, "validation corpus")
     if not train or not val:
@@ -182,6 +200,7 @@ def train_model(
     _validate_active_labels(val, active_labels, "validation corpus")
     _validate_active_labels(reviewed_records, active_labels, "reviewed examples")
     hasher = FeatureHasher(n_features=FEATURES, input_type="dict", alternate_sign=False)
+    feature_fn = combined_features if feature_version == 3 else features
     known = np.array(sorted({"O"} | {f"{prefix}-{label}" for label in active_labels for prefix in ("B", "I")}))
     if initial_artifact is None:
         classifier = SGDClassifier(loss="log_loss", alpha=1e-5, random_state=17, average=True)
@@ -226,7 +245,7 @@ def train_model(
     for _epoch in range(3):
         for record_index, record in enumerate(train):
             tokens = tokenize(record["text"])
-            batch_x.extend(features(tokens, i) for i in range(len(tokens)))
+            batch_x.extend(feature_fn(tokens, i) for i in range(len(tokens)))
             batch_y.extend(labels_for_tokens(record, tokens, active_labels, record_index))
             if len(batch_x) >= BATCH_SIZE:
                 classifier.partial_fit(hasher.transform(batch_x), batch_y, classes=known if first else None)
@@ -242,13 +261,13 @@ def train_model(
         if not tokens:
             continue
         gold.extend(labels_for_tokens(record, tokens, active_labels, record_index))
-        pred.extend(classifier.predict(hasher.transform([features(tokens, i) for i in range(len(tokens))])).tolist())
+        pred.extend(classifier.predict(hasher.transform([feature_fn(tokens, i) for i in range(len(tokens))])).tolist())
     score = float(f1_score(gold, pred, average="micro", labels=[label for label in known if label != "O"], zero_division=0))
     matrix = csr_matrix(classifier.coef_)
     buffer = BytesIO()
     np.savez_compressed(
         buffer,
-        version=np.array([2], dtype=np.int16),
+        version=np.array([feature_version], dtype=np.int16),
         features=np.array([FEATURES], dtype=np.int32),
         classes=classifier.classes_,
         data=matrix.data,
@@ -313,7 +332,7 @@ def train_model(
 def decode_artifact(artifact: bytes) -> tuple[FeatureHasher, list[str], csr_matrix, np.ndarray, int]:
     with np.load(BytesIO(artifact), allow_pickle=False) as saved:
         artifact_version = int(saved["version"][0])
-        if artifact_version not in (1, 2):
+        if artifact_version not in (1, 2, 3):
             raise ValueError("Unsupported model artifact version")
         feature_count = int(saved["features"][0])
         classes = saved["classes"].astype(str).tolist()
@@ -328,7 +347,8 @@ def predict(text: str, artifact: bytes) -> list[dict[str, Any]]:
     tokens = _tokenize_legacy(text) if artifact_version == 1 else tokenize(text)
     if not tokens:
         return []
-    matrix = hasher.transform([features(tokens, i) for i in range(len(tokens))]).tocsr()
+    feature_fn = combined_features if artifact_version == 3 else features
+    matrix = hasher.transform([feature_fn(tokens, i) for i in range(len(tokens))]).tocsr()
     decision = (matrix @ weights.T).toarray() + intercept
     shifted = decision - decision.max(axis=1, keepdims=True)
     exp_scores = np.exp(shifted)
