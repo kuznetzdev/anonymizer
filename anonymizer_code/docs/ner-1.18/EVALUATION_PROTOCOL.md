@@ -35,4 +35,18 @@ The candidate reuses `app.model.train_model`, feature version 3, and its registe
 
 The development gate compares the candidate to 1.16.0 on the original 17 labels, using the existing 1.17 thresholds: common exact-span micro-F1 may fall by no more than 0.01, document leak rate may rise by no more than 0.01, and each priority-label coverage recall may fall by no more than 0.02. On 1.16.0 medical validation, leak rate must improve by at least 0.01 and SNILS recall must improve by at least 0.02, reach at least 45/49, and retain support 49. No threshold tuning or repeat run is allowed after seeing results.
 
-Development passage cannot release the candidate. The result stays `HOLD`: no fresh independent test or challenge set exists for the expanded 22-label ontology. No test/challenge file is an input to the runner, and the candidate artifact remains a local development NPZ without activation or Docker changes.
+Development passage cannot release the candidate. The result stays `HOLD`: no fresh independent test or challenge set exists for the expanded 22-label ontology. No test/challenge file is scored or used for training. The 1.18.1 runner reads the release ZIP and its metadata for provenance and import validation. The candidate artifact remains a local development NPZ without activation or Docker changes.
+
+## One-shot feature-space diagnostic 1.18.2
+
+This is a model diagnostic, not a new corpus release. It reuses the immutable 1.18.1 training and validation snapshots without adding or duplicating records. A read-only scan of 1.18.1 train found 292,516 distinct `combined_features` keys across 13,731 records and 317,136 tokens. With the existing 16,384-bucket hasher, all buckets were occupied and 276,132 distinct keys shared a bucket with another key. At 262,144 buckets, 176,282 buckets were occupied and 116,234 keys shared buckets. This vocabulary-wide count makes collisions plausible but does not establish that they caused measured errors.
+
+For the completed one-off run, the local runner verified pinned hashes for allowed train/validation inputs and did not read or snapshot the release ZIP, release manifest, quality report, test/challenge files, or their metadata. Its source is preserved only in the local evaluation snapshot, not in `main`. The single preregistered ablation changed only the hash-space size from 16,384 to 262,144. Feature version 3, corpus bytes, epochs, seed, loss, regularization, averaging, batch size, baselines, and development scoring remain fixed. The command used for that completed run was:
+
+```powershell
+python scripts/ner_1_18/train_candidate.py --source-reviewed --feature-space-ablation
+```
+
+The run wrote to a separate one-shot `medical-1.18.2-feature-262144` evaluation directory and recorded the 1.18.1 corpus version and feature count in its input manifest. The report records elapsed training seconds and candidate artifact size; it does not measure peak memory. Do not rerun, tune, or select a different dimension from these results. Even a passing development comparison remains `HOLD` until an independent adjudicated evaluation covers the expanded ontology. The artifact is never activated automatically.
+
+This diagnostic was executed once from an isolated working-tree revision. Its exact model and runner sources are preserved in the local evaluation snapshot, not in `main`, because the common development gate failed. This section records that completed run; it does not authorize another training or tuning pass.
