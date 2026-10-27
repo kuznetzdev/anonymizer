@@ -1,0 +1,138 @@
+[
+  {
+    "status": "coverage_gap",
+    "for_training": false,
+    "provenance": {
+      "mode": "synthetic",
+      "references": []
+    },
+    "id": "gap-001",
+    "title": "Дата рождения плюс ФИО",
+    "marked_text": "В листе регистрации [[PER|Амали Гюльтекин]] указала дату рождения 29.02.2000 и кабинет 21.",
+    "unmapped_fields": [
+      {
+        "field": "birth_date",
+        "value": "29.02.2000",
+        "context": "поле персональной анкеты"
+      }
+    ],
+    "identity_risk": "text_internally_linkable",
+    "question": "Нужна ли отдельная маска даты рождения, когда ФИО уже найдено?"
+  },
+  {
+    "status": "coverage_gap",
+    "for_training": false,
+    "provenance": {
+      "mode": "synthetic",
+      "references": []
+    },
+    "id": "gap-002",
+    "title": "Возраст в сочетании с местом",
+    "marked_text": "В учебном досье [[PER|Якуб Сеитов]] отмечен как 97-летний участник встречи в [[LOCALITY|Ухте]].",
+    "unmapped_fields": [
+      {
+        "field": "age",
+        "value": "97 лет",
+        "context": "редкий возраст и географический признак"
+      }
+    ],
+    "identity_risk": "requires_external_information",
+    "question": "Когда сочетание возраста и города следует обобщать?"
+  },
+  {
+    "status": "coverage_gap",
+    "for_training": false,
+    "provenance": {
+      "mode": "synthetic",
+      "references": []
+    },
+    "id": "gap-003",
+    "title": "Узкая профессия",
+    "marked_text": "[[PER|Джамиля Кочкарова]] названа единственным реставратором редкого измерительного прибора на учебном объекте.",
+    "unmapped_fields": [
+      {
+        "field": "profession",
+        "value": "реставратор редкого измерительного прибора",
+        "context": "узкая профессиональная роль"
+      }
+    ],
+    "identity_risk": "requires_external_information",
+    "question": "Нужна ли политика для редкой должности, облегчающей внешнюю идентификацию?"
+  },
+  {
+    "status": "coverage_gap",
+    "for_training": false,
+    "provenance": {
+      "mode": "synthetic",
+      "references": []
+    },
+    "id": "gap-004",
+    "title": "Родство и состояние здоровья",
+    "marked_text": "В беседе [[PER|Малика Османова]] сообщила, что ее двоюродная сестра наблюдается по поводу [[DISEASE|болезни Паркинсона]].",
+    "unmapped_fields": [
+      {
+        "field": "kinship",
+        "value": "двоюродная сестра",
+        "context": "родственник без собственного ФИО"
+      }
+    ],
+    "identity_risk": "requires_external_information",
+    "health_risk": "sensitive_health_present",
+    "question": "Как обрабатывать сведения о третьем лице и родстве, если заболевание уже размечено?"
+  },
+  {
+    "status": "coverage_gap",
+    "for_training": false,
+    "provenance": {
+      "mode": "synthetic",
+      "references": []
+    },
+    "id": "gap-005",
+    "title": "Редкое публичное событие",
+    "marked_text": "В новости о вымышленной конференции [[PER|Мадина Курбанова]] выступила единственным участником ночной экспедиции 14.10.2026.",
+    "unmapped_fields": [
+      {
+        "field": "rare_event",
+        "value": "единственный участник ночной экспедиции",
+        "context": "узнаваемое событие"
+      },
+      {
+        "field": "event_date",
+        "value": "14.10.2026",
+        "context": "дата события"
+      }
+    ],
+    "identity_risk": "requires_external_information",
+    "question": "Нужно ли выделять событие и дату при публикации обезличенного текста?"
+  },
+  {
+    "status": "coverage_gap",
+    "for_training": false,
+    "provenance": {
+      "mode": "synthetic",
+      "references": []
+    },
+    "id": "gap-006",
+    "title": "Возраст, родство и дата приема",
+    "marked_text": "[[PER|Костя Ганиев]], 12 лет, пришел на прием 16.09.2026 в сопровождении дяди. Контактных реквизитов в отрывке нет.",
+    "unmapped_fields": [
+      {
+        "field": "age",
+        "value": "12 лет",
+        "context": "возраст несовершеннолетнего"
+      },
+      {
+        "field": "kinship",
+        "value": "дядя",
+        "context": "роль сопровождающего"
+      },
+      {
+        "field": "event_date",
+        "value": "16.09.2026",
+        "context": "дата посещения"
+      }
+    ],
+    "identity_risk": "requires_external_information",
+    "question": "Какие поля и сочетания дополнительно скрывать для несовершеннолетних?"
+  }
+]
